@@ -1,0 +1,44 @@
+name: Auto YouTube Upload
+on:
+  schedule:
+    # Runs at 9AM, 2PM, 7PM UTC daily (3 videos per day)
+    - cron: '0 9,14,19 * * *'
+  workflow_dispatch:  # Allows manual run
+
+jobs:
+  create-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+        
+    - name: Install Python packages
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run YouTube automation
+      env:
+        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        echo "🚀 Starting YouTube Automation System"
+        echo "====================================="
+        python automation.py
+        echo "✅ Automation completed successfully!"
+        
+    - name: Success Notification
+      run: |
+        echo "🎉 3 videos created and ready!"
+        echo "Time: $(date)"
+        echo "Next upload: Tomorrow at scheduled times"
