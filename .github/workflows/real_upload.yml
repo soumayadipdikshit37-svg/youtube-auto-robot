@@ -19,14 +19,14 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg imagemagick
+        sudo apt-get install -y ffmpeg
         
     - name: Install Python packages
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Run Full Automation Pipeline
+    - name: Run Simple Automation
       env:
         # API Keys
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
@@ -39,10 +39,10 @@ jobs:
         GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
       run: |
-        echo "🚀 STARTING YOUTUBE AUTOMATION PIPELINE"
-        echo "========================================"
-        python main_automation.py
-        echo "✅ Pipeline execution complete!"
+        echo "🚀 STARTING YOUTUBE AUTOMATION"
+        echo "================================"
+        python simple_automation.py
+        echo "✅ Automation completed successfully!"
         
     - name: Success Notification
       run: |
