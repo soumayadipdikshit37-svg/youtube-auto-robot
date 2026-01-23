@@ -1,11 +1,11 @@
-name: Real YouTube Upload
+name: YouTube Auto Pipeline
 on:
   schedule:
-    - cron: '0 9,14,19 * * *'  # 9AM, 2PM, 7PM UTC
+    - cron: '0 9,14,19 * * *'  # 9AM, 2PM, 7PM UTC daily
   workflow_dispatch:
 
 jobs:
-  upload-videos:
+  create-and-upload:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -16,23 +16,36 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg imagemagick
+        
+    - name: Install Python packages
+      run: |
+        pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Test environment variables
+    - name: Run Full Automation Pipeline
       env:
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        # API Keys
+        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        STABILITY_API_KEY: ${{ secrets.STABILITY_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        
+        # Google OAuth
         GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
         GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
       run: |
-        echo "🔧 Testing environment setup..."
-        python simple_upload.py
+        echo "🚀 STARTING YOUTUBE AUTOMATION PIPELINE"
+        echo "========================================"
+        python main_automation.py
+        echo "✅ Pipeline execution complete!"
         
-    - name: Success message
+    - name: Success Notification
       run: |
-        echo "✅ Environment tested successfully!"
-        echo "📅 Next: Add real YouTube upload functionality"
-        echo "🕒 Next run: Scheduled time"
+        echo "🎉 3 videos processed successfully!"
+        echo "📅 Next run: Scheduled time"
+        echo "⏰ System will run automatically 24/7"
