@@ -26,7 +26,7 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Run Simple Automation
+    - name: Run Real Pipeline
       env:
         # API Keys
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
@@ -39,13 +39,27 @@ jobs:
         GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
       run: |
-        echo "🚀 STARTING YOUTUBE AUTOMATION"
-        echo "================================"
-        python simple_automation.py
-        echo "✅ Automation completed successfully!"
+        echo "🚀 STARTING REAL YOUTUBE AUTOMATION"
+        echo "===================================="
+        python real_pipeline.py
+        echo "✅ Real automation completed successfully!"
+        
+    - name: List Created Files
+      run: |
+        echo "📁 Created Files:"
+        ls -la *.mp4 *.png *.json 2>/dev/null || echo "No output files"
+        
+    - name: Upload Video Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: generated-videos
+        path: |
+          *.mp4
+          *.png
+          pipeline_results.json
         
     - name: Success Notification
       run: |
-        echo "🎉 3 videos processed successfully!"
+        echo "🎉 REAL videos processed successfully!"
         echo "📅 Next run: Scheduled time"
         echo "⏰ System will run automatically 24/7"
