@@ -20,13 +20,16 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
+        sudo apt-get install -y imagemagick
         sudo apt-get install -y python3-pil
         sudo apt-get install -y espeak
+        # Fix ImageMagick policy
+        sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml 2>/dev/null || true
         
     - name: Install Python packages
       run: |
         pip install --upgrade pip
-        # Fixed versions to avoid ANTIALIAS error
+        # Fixed versions to avoid errors
         pip install moviepy==1.0.3
         pip install Pillow==9.5.0
         pip install requests==2.31.0
