@@ -20,21 +20,26 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
+        sudo apt-get install -y python3-pil
+        sudo apt-get install -y espeak
         
     - name: Install Python packages
       run: |
         pip install --upgrade pip
-        pip install -r requirements.txt
+        # Fixed versions to avoid ANTIALIAS error
+        pip install moviepy==1.0.3
+        pip install Pillow==9.5.0
+        pip install requests==2.31.0
+        pip install gTTS==2.4.0
+        pip install pyttsx3==2.90
+        pip install google-api-python-client==2.104.0
+        pip install google-auth-oauthlib==1.1.0
+        pip install google-auth-httplib2==0.1.1
         
     - name: Run Real Pipeline
       env:
         # API Keys
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-        STABILITY_API_KEY: ${{ secrets.STABILITY_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        
-        # Google OAuth
         GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
         GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
@@ -47,7 +52,7 @@ jobs:
     - name: List Created Files
       run: |
         echo "📁 Created Files:"
-        ls -la *.mp4 *.png *.json 2>/dev/null || echo "No output files"
+        ls -la *.mp4 *.png *.txt *.json 2>/dev/null || echo "No output files"
         
     - name: Upload Video Artifacts
       uses: actions/upload-artifact@v4
@@ -56,10 +61,11 @@ jobs:
         path: |
           *.mp4
           *.png
-          pipeline_results.json
+          *.txt
+          *.json
         
     - name: Success Notification
       run: |
-        echo "🎉 REAL videos processed successfully!"
-        echo "📅 Next run: Scheduled time"
+        echo "🎉 REAL YouTube Automation System Active!"
+        echo "📅 Next run: 9AM, 2PM, 7PM UTC Daily"
         echo "⏰ System will run automatically 24/7"
