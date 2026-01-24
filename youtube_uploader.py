@@ -1,98 +1,92 @@
 import os
-import json
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import googleapiclient.errors
 
-class YouTubeUploader:
-    def __init__(self):
-        self.service = None
-        
-    def authenticate(self):
-        """Simple authentication - NO ERRORS"""
-        print("🔐 Step 1: Getting service account...")
-        
-        # Get from environment
-        sa_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-        if not sa_json:
-            print("❌ ERROR: GOOGLE_SERVICE_ACCOUNT_JSON not found")
-            return False
-            
-        try:
-            print("🔐 Step 2: Parsing JSON...")
-            sa_info = json.loads(sa_json)
-            print(f"   Service Account: {sa_info['client_email']}")
-            
-            print("🔐 Step 3: Creating credentials...")
-            credentials = service_account.Credentials.from_service_account_info(
-                sa_info,
-                scopes=['https://www.googleapis.com/auth/youtube.upload'],
-                subject='soumayadipdikshit37@gmail.com'  # YOUR EMAIL
-            )
-            
-            print("🔐 Step 4: Building YouTube service...")
-            self.service = build('youtube', 'v3', credentials=credentials)
-            
-            print("✅ SUCCESS! Ready to upload videos")
-            return True
-            
-        except Exception as e:
-            print(f"❌ FAILED: {str(e)[:100]}")
-            return False
+def upload_video(video_path="final_video.mp4"):
+    print(f"📤 Starting YouTube upload for: {video_path}")
     
-    def upload_video(self, video_file, title, description="", category_id="22", tags=None):
-        """Upload video - FIXED PARAMETER NAME"""
-        if not self.service:
-            print("❌ Not authenticated")
-            return None
-            
-        print(f"📤 Uploading: {title}")
-        print(f"   File: {video_file}")
+    # Check if file exists
+    if not os.path.exists(video_path):
+        print(f"❌ Video file not found: {video_path}")
+        return False
+    
+    # Get credentials
+    client_id = os.getenv('YOUTUBE_CLIENT_ID')
+    client_secret = os.getenv('YOUTUBE_CLIENT_SECRET')
+    refresh_token = os.getenv('YOUTUBE_REFRESH_TOKEN')
+    
+    if not all([client_id, client_secret, refresh_token]):
+        print("❌ Missing YouTube credentials")
+        print("Set these environment variables:")
+        print("1. YOUTUBE_CLIENT_ID")
+        print("2. YOUTUBE_CLIENT_SECRET")
+        print("3. YOUTUBE_REFRESH_TOKEN")
+        return False
+    
+    try:
+        print("Authenticating with YouTube API...")
         
-        # Prepare video metadata
-        body = {
+        # Create credentials
+        credentials = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri='https://oauth2.googleapis.com/token',
+            client_id=client_id,
+            client_secret=client_secret
+        )
+        
+        # Build YouTube service
+        youtube = build('youtube', 'v3', credentials=credentials)
+        
+        # Video metadata
+        request_body = {
             'snippet': {
-                'title': title,
-                'description': description or 'Automated video upload',
-                'categoryId': category_id,
-                'tags': tags or ["automation", "youtube", "money"]
+                'title': 'Make $313/month with Passive Income - Automated Video',
+                'description': 'This video was created automatically using Python automation.\n\nTopics: passive income, online business, automation\n\n#PassiveIncome #Automation #MoneyMaking',
+                'tags': ['passive income', 'automation', 'make money online', 'youtube automation'],
+                'categoryId': '22'  # People & Blogs
             },
             'status': {
-                'privacyStatus': 'public',  # Change to 'public'
+                'privacyStatus': 'private',  # Change to 'public' when ready
                 'selfDeclaredMadeForKids': False
             }
         }
         
-        try:
-            # Upload video
-            media = MediaFileUpload(video_file, mimetype='video/mp4')
-            
-            request = self.service.videos().insert(
-                part='snippet,status',
-                body=body,
-                media_body=media
-            )
-            
-            response = request.execute()
-            video_id = response.get('id')
-            
-            if video_id:
-                print(f"🎉 UPLOADED! Video ID: {video_id}")
-                print(f"🔗 URL: https://youtube.com/watch?v={video_id}")
-                return video_id
-            else:
-                print("❌ Upload failed - no video ID")
-                return None
-                
-        except Exception as e:
-            print(f"❌ Upload error: {str(e)[:200]}")
-            return None
+        print("Uploading video...")
+        
+        # Upload video
+        media = MediaFileUpload(
+            video_path,
+            mimetype='video/mp4',
+            resumable=True,
+            chunksize=1024*1024
+        )
+        
+        request = youtube.videos().insert(
+            part='snippet,status',
+            body=request_body,
+            media_body=media
+        )
+        
+        response = request.execute()
+        
+        print(f"✅ Upload successful!")
+        print(f"📺 Video ID: {response.get('id')}")
+        print(f"📝 Title: {response['snippet']['title']}")
+        print(f"🔒 Privacy: {response['status']['privacyStatus']}")
+        
+        return True
+        
+    except googleapiclient.errors.HttpError as e:
+        print(f"❌ YouTube API Error: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Upload failed: {e}")
+        return False
 
-# Simple test
+# For direct testing
 if __name__ == "__main__":
-    print("🧪 Testing YouTube Uploader")
-    uploader = YouTubeUploader()
-    if uploader.authenticate():
-        print("✅ Test passed!")
-    else:
-        print("❌ Test failed")
+    success = upload_video()
+    exit(0 if success else 1)
