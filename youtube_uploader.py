@@ -1,87 +1,62 @@
 import os
-import pickle
-import requests
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
+import json
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from datetime import datetime
 
 class YouTubeUploader:
     def __init__(self):
-        self.client_id = os.getenv("GOOGLE_CLIENT_ID")
-        self.client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-        self.project_id = os.getenv("GOOGLE_PROJECT_ID")
+        # Service account JSON from GitHub Secrets
+        self.service_account_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
         
     def get_authenticated_service(self):
-        """Get authenticated YouTube service"""
-        print("🔐 Setting up YouTube authentication...")
+        """Authenticate using Service Account"""
+        print("🔐 Authenticating with Service Account...")
         
-        credentials = None
-        
-        # Check for existing token
-        if os.path.exists("token.pickle"):
-            print("   📁 Loading existing token...")
-            with open("token.pickle", "rb") as token:
-                credentials = pickle.load(token)
-        
-        # If no valid credentials, create from environment
-        if not credentials or not credentials.valid:
-            if credentials and credentials.expired and credentials.refresh_token:
-                print("   🔄 Refreshing token...")
-                credentials.refresh(Request())
-            else:
-                print("   🔑 Creating new credentials from environment...")
-                
-                # Create client config from environment variables
-                client_config = {
-                    "installed": {
-                        "client_id": self.client_id,
-                        "project_id": self.project_id,
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                        "client_secret": self.client_secret,
-                        "redirect_uris": ["http://localhost:8080"]
-                    }
-                }
-                
-                # Try to authenticate (in simulation mode for GitHub Actions)
-                print("   ⚠️  Running in simulation mode (GitHub Actions)")
-                print("   ℹ️  Real upload requires browser authentication")
-                
-                # For now, return simulated service
-                return self.get_simulated_service()
-        
-        return build("youtube", "v3", credentials=credentials)
-    
-    def get_simulated_service(self):
-        """Return simulated YouTube service for testing"""
-        class SimulatedService:
-            def videos(self):
-                class Videos:
-                    def insert(self, **kwargs):
-                        class Response:
-                            def execute(self):
-                                print("   ✅ SIMULATION: Video uploaded successfully!")
-                                print("   📍 Real upload would create at: youtube.com/watch?v=simulated123")
-                                return {"id": "simulated_video_id_123"}
-                        return Response()
-                return Videos()
-        
-        print("   🧪 Using simulated YouTube service")
-        return SimulatedService()
+        try:
+            if not self.service_account_json:
+                print("   ❌ GOOGLE_SERVICE_ACCOUNT_JSON not found")
+                return None
+            
+            # Parse JSON from environment variable
+            service_account_info = json.loads(self.service_account_json)
+            
+            # Create credentials
+            credentials = service_account.Credentials.from_service_account_info(
+                service_account_info,
+                scopes=['https://www.googleapis.com/auth/youtube.upload']
+            )
+            
+            # Build YouTube service
+            youtube = build('youtube', 'v3', credentials=credentials)
+            
+            print("   ✅ Authenticated successfully!")
+            return youtube
+            
+        except Exception as e:
+            print(f"   ❌ Authentication failed: {e}")
+            return None
     
     def upload_video(self, video_file, title, description, tags, thumbnail_file=None):
-        """Upload video to YouTube"""
-        print(f"\n📤 Uploading video to YouTube...")
+        """REAL YouTube upload using Service Account"""
+        print(f"\n📤 REAL YouTube Upload Starting...")
         print(f"   Title: {title}")
         print(f"   File: {video_file}")
         
         try:
+            # Authenticate
             youtube = self.get_authenticated_service()
+            if not youtube:
+                print("   ❌ Cannot authenticate")
+                return None
             
-            # Prepare video metadata
+            # Check file exists
+            if not os.path.exists(video_file):
+                print(f"   ❌ File not found: {video_file}")
+                return None
+            
+            # Video metadata
             body = {
                 "snippet": {
                     "title": title,
@@ -90,19 +65,21 @@ class YouTubeUploader:
                     "categoryId": "22"  # Education
                 },
                 "status": {
-                    "privacyStatus": "public",
+                    "privacyStatus": "public",  # Change to "private" for testing
                     "selfDeclaredMadeForKids": False
                 }
             }
             
-            # Create media upload
+            file_size = os.path.getsize(video_file)
+            print(f"   📦 Uploading {file_size:,} bytes...")
+            
+            # Upload video
             media = MediaFileUpload(
                 video_file,
                 mimetype="video/mp4",
-                resumable=True
+                resumable=True,
+                chunksize=1024*1024  # 1MB chunks
             )
-            
-            print("   📦 Uploading media...")
             
             # Insert request
             request = youtube.videos().insert(
@@ -111,77 +88,84 @@ class YouTubeUploader:
                 media_body=media
             )
             
-            # Execute upload
-            response = request.execute()
+            # Execute with progress
+            response = None
+            print("   ⏳ Uploading...")
+            while response is None:
+                status, response = request.next_chunk()
+                if status:
+                    progress = int(status.progress() * 100)
+                    print(f"   📊 Progress: {progress}%")
             
-            video_id = response.get("id", "simulated_id")
-            print(f"   ✅ Upload successful!")
+            # Get video ID
+            video_id = response['id']
+            
+            print(f"   ✅ REAL UPLOAD SUCCESSFUL!")
             print(f"   🎥 Video ID: {video_id}")
+            print(f"   🔗 YouTube URL: https://youtube.com/watch?v={video_id}")
             
-            # If thumbnail provided, upload it
+            # Upload thumbnail if provided
             if thumbnail_file and os.path.exists(thumbnail_file):
                 print(f"   🖼️  Uploading thumbnail...")
-                youtube.thumbnails().set(
-                    videoId=video_id,
-                    media_body=MediaFileUpload(thumbnail_file)
-                ).execute()
-                print(f"   ✅ Thumbnail uploaded!")
+                try:
+                    youtube.thumbnails().set(
+                        videoId=video_id,
+                        media_body=MediaFileUpload(thumbnail_file)
+                    ).execute()
+                    print(f"   ✅ Thumbnail uploaded!")
+                except Exception as thumb_error:
+                    print(f"   ⚠️  Thumbnail upload failed: {thumb_error}")
             
             return video_id
             
         except Exception as e:
-            print(f"   ❌ Upload error: {e}")
-            print(f"   ℹ️  This is normal in simulation mode")
-            return f"simulated_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            print(f"   ❌ REAL Upload failed: {e}")
+            return None
     
     def create_video_description(self, title, topic):
         """Create YouTube video description"""
         return f"""{title}
 
-In this video, we explore {topic} and how it's changing the world.
+Learn how to automate {topic} for passive income. This automated system creates videos 24/7.
 
-📌 What You'll Learn:
+📌 In This Video:
 • Introduction to {topic}
-• Practical applications
-• Future developments
+• Tools and platforms needed
+• Step-by-step setup guide
+• Monetization strategies
 
-🛠️ Tools Mentioned:
-• ChatGPT - AI assistance
-• Python - Automation
-• GitHub - Code hosting
+🛠️ Tools Used:
+• Python automation
+• AI content generation
+• Free APIs for data
+• Cloud platforms
 
-👇 Comment below what you want to learn next!
+👇 COMMENT below what you want to learn next!
 
-🔔 Subscribe for daily tech tutorials!
+🔔 SUBSCRIBE for daily automation tutorials!
 
-📱 Follow for more:
-• Twitter: @techupdates
-• Website: example.com
-
-#aitools #technology #innovation #technews #futuretech #digitaltransformation #innovation #tech #ai #automation"""
+#aitools #automation #passiveincome #makemoneyonline #{topic.lower().replace(' ', '')}"""
 
 def main():
-    print("=" * 50)
-    print("YOUTUBE UPLOADER")
-    print("=" * 50)
+    print("=" * 60)
+    print("REAL YouTube Uploader - Service Account Version")
+    print("=" * 60)
     
     uploader = YouTubeUploader()
     
-    # Test upload
-    test_title = "AI Technology Revolution 2024"
-    test_description = uploader.create_video_description(test_title, "AI Technology")
+    # Test authentication
+    print("\n🔍 Testing authentication...")
+    service = uploader.get_authenticated_service()
     
-    print("\n🧪 Test upload simulation:")
-    video_id = uploader.upload_video(
-        video_file="test_video.mp4",
-        title=test_title,
-        description=test_description,
-        tags=["ai", "technology", "future", "innovation"]
-    )
-    
-    print(f"\n🎉 Test complete!")
-    print(f"   Next: Add real video files for actual upload")
-    print("\n" + "=" * 50)
+    if service:
+        print("✅ Ready for REAL YouTube uploads!")
+        print("\n🎯 Next steps:")
+        print("1. Run workflow to create videos")
+        print("2. Videos will upload to YouTube automatically")
+        print("3. Check your YouTube channel!")
+    else:
+        print("❌ Authentication failed")
+        print("Check GOOGLE_SERVICE_ACCOUNT_JSON in GitHub Secrets")
 
 if __name__ == "__main__":
     main()
