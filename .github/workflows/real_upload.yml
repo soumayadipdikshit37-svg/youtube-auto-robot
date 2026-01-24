@@ -20,11 +20,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
-        sudo apt-get install -y imagemagick
         sudo apt-get install -y python3-pil
         sudo apt-get install -y espeak
-        # Fix ImageMagick policy
-        sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml 2>/dev/null || true
+        echo "✅ Dependencies installed (FFmpeg + PIL only)"
         
     - name: Install Python packages
       run: |
