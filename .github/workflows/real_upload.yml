@@ -1,75 +1,105 @@
-name: YouTube Auto Pipeline
+name: YouTube Auto Robot
+
 on:
-  schedule:
-    - cron: '0 9,14,19 * * *'  # 9AM, 2PM, 7PM UTC daily
   workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Video Topic'
+        required: false
+        default: 'Passive Income'
+      title:
+        description: 'Video Title'  
+        required: false
+        default: 'Make $313/month with Passive Income'
 
 jobs:
-  create-and-upload:
+  create-upload:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
     steps:
-    - name: Checkout code
+    - name: 📥 Checkout code
       uses: actions/checkout@v4
-      
-    - name: Setup Python
+    
+    - name: 🐍 Setup Python 3.10
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-        
-    - name: Install system dependencies
+    
+    - name: 🛠️ Setup System
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg
-        sudo apt-get install -y python3-pil
-        sudo apt-get install -y espeak
-        echo "✅ Dependencies installed (FFmpeg + PIL only)"
-        
-    - name: Install Python packages
+        sudo apt-get install -y ffmpeg python3-pip
+        ffmpeg -version
+    
+    - name: 📦 Install Python Dependencies
       run: |
-        pip install --upgrade pip
-        # Fixed versions to avoid errors
-        pip install moviepy==1.0.3
-        pip install Pillow==9.5.0
-        pip install requests==2.31.0
-        pip install gTTS==2.4.0
-        pip install pyttsx3==2.90
-        pip install google-api-python-client==2.104.0
-        pip install google-auth-oauthlib==1.1.0
-        pip install google-auth-httplib2==0.1.1
-        
-    - name: Run Real Pipeline
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install --upgrade google-api-python-client
+    
+    - name: 🎬 Create Silent Audio
+      run: |
+        ffmpeg -f lavfi -i anullsrc=r=44100:cl=stereo -t 120 silent.mp4 -y
+        echo "Audio file created: $(ls -la silent.mp4)"
+    
+    - name: 🚀 Run Real Pipeline
       env:
-        # API Keys
-        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-        GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}  # ⬅️ CRITICAL ADDITION!
+        VIDEO_TOPIC: ${{ github.event.inputs.topic || 'Passive Income' }}
+        VIDEO_TITLE: ${{ github.event.inputs.title || 'Make $313/month with Passive Income' }}
+        YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+        YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       run: |
-        echo "🚀 STARTING REAL YOUTUBE AUTOMATION"
-        echo "===================================="
-        echo "Testing environment variables..."
-        echo "PEXELS_API_KEY exists: $(if [ -n \"$PEXELS_API_KEY\" ]; then echo '✅ Yes'; else echo '❌ No'; fi)"
-        echo "GOOGLE_SERVICE_ACCOUNT_JSON exists: $(if [ -n \"$GOOGLE_SERVICE_ACCOUNT_JSON\" ]; then echo '✅ Yes'; else echo '❌ No'; fi)"
-        echo "First 50 chars of service account JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:0:50}..."
-        echo "===================================="
+        echo "=== STARTING PIPELINE ==="
+        echo "Topic: $VIDEO_TOPIC"
+        echo "Title: $VIDEO_TITLE"
+        
+        # Run the pipeline
         python real_pipeline.py
-        echo "✅ Real automation completed successfully!"
         
-    - name: List Created Files
+        # Check result
+        if [ $? -eq 0 ]; then
+          echo "✅ Pipeline successful"
+        else
+          echo "❌ Pipeline failed"
+          exit 1
+        fi
+    
+    - name: 📁 Verify Output
       run: |
-        echo "📁 Created Files:"
-        ls -la *.mp4 *.png *.txt *.json 2>/dev/null || echo "No output files"
+        echo "=== CHECKING OUTPUT ==="
+        ls -la *.mp4 *.png *.jpg 2>/dev/null || echo "No media files found"
         
-    - name: Upload Video Artifacts
+        if [ -f "output_video.mp4" ]; then
+          echo "✅ Found: output_video.mp4"
+          mv output_video.mp4 final_video.mp4
+        elif [ -f "video.mp4" ]; then
+          echo "✅ Found: video.mp4"
+          mv video.mp4 final_video.mp4
+        elif [ -f "final_video.mp4" ]; then
+          echo "✅ Found: final_video.mp4"
+        else
+          echo "❌ ERROR: No video file created!"
+          find . -name "*.mp4" -type f | head -5
+          exit 1
+        fi
+        
+        echo "Video size: $(du -h final_video.mp4)"
+    
+    - name: 💾 Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: generated-videos
-        path: |
-          *.mp4
-          *.png
-          *.txt
-          *.json
-        
-    - name: Success Notification
+        name: youtube-video
+        path: final_video.mp4
+        retention-days: 1
+    
+    - name: 🎉 Complete
+      if: success()
       run: |
-        echo "🎉 REAL YouTube Automation System Active!"
-        echo "📅 Next run: 9AM, 2PM, 7PM UTC Daily"
-        echo "⏰ System will run automatically 24/7"
+        echo "========================================"
+        echo "🎯 YOUTUBE AUTOMATION COMPLETE"
+        echo "========================================"
+        echo "Video saved: final_video.mp4"
+        echo "Download from Artifacts section"
+        echo "========================================"
