@@ -9,7 +9,7 @@ class YouTubeUploader:
         self.service = None
         
     def authenticate(self):
-        """Simple authentication"""
+        """Simple authentication - NO ERRORS"""
         print("🔐 Step 1: Getting service account...")
         
         # Get from environment
@@ -40,29 +40,32 @@ class YouTubeUploader:
             print(f"❌ FAILED: {str(e)[:100]}")
             return False
     
-    def upload_video(self, video_path, title):
-        """Upload video"""
+    def upload_video(self, video_file, title, description="", category_id="22", tags=None):
+        """Upload video - FIXED PARAMETER NAME"""
         if not self.service:
             print("❌ Not authenticated")
             return None
             
         print(f"📤 Uploading: {title}")
+        print(f"   File: {video_file}")
         
+        # Prepare video metadata
         body = {
             'snippet': {
                 'title': title,
-                'description': 'Automated video upload',
-                'categoryId': '22',
-                'tags': ['automation', 'youtube']
+                'description': description or 'Automated video upload',
+                'categoryId': category_id,
+                'tags': tags or ["automation", "youtube", "money"]
             },
             'status': {
-                'privacyStatus': 'unlisted',  # Change to 'public' later
+                'privacyStatus': 'public',  # Change to 'public'
                 'selfDeclaredMadeForKids': False
             }
         }
         
         try:
-            media = MediaFileUpload(video_path, mimetype='video/mp4')
+            # Upload video
+            media = MediaFileUpload(video_file, mimetype='video/mp4')
             
             request = self.service.videos().insert(
                 part='snippet,status',
@@ -78,11 +81,11 @@ class YouTubeUploader:
                 print(f"🔗 URL: https://youtube.com/watch?v={video_id}")
                 return video_id
             else:
-                print("❌ Upload failed")
+                print("❌ Upload failed - no video ID")
                 return None
                 
         except Exception as e:
-            print(f"❌ Upload error: {str(e)[:100]}")
+            print(f"❌ Upload error: {str(e)[:200]}")
             return None
 
 # Simple test
