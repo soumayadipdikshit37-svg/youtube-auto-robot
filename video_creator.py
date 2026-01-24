@@ -2,54 +2,21 @@ import os
 import random
 import requests
 import tempfile
-from moviepy.editor import *
+import subprocess
 from PIL import Image, ImageDraw, ImageFont
-import textwrap
 
 class VideoCreator:
     def __init__(self):
         self.pexels_key = os.getenv("PEXELS_API_KEY")
-        self.stability_key = os.getenv("STABILITY_API_KEY")
-        self.openai_key = os.getenv("OPENAI_API_KEY")
         
-    def generate_ai_image(self, prompt):
-        """Generate AI image using Stability AI"""
-        try:
-            print(f"🖼️  Generating AI image: {prompt[:50]}...")
-            
-            # Stability AI API call
-            headers = {
-                "Authorization": f"Bearer {self.stability_key}",
-                "Accept": "image/png"
-            }
-            
-            data = {
-                "prompt": f"{prompt}, high quality, trending on artstation, 4k",
-                "output_format": "png"
-            }
-            
-            # For now, simulate (real API needs specific endpoint)
-            print("   ⚠️  Simulation mode - using placeholder")
-            print("   ✅ Image concept generated successfully")
-            
-            # Create simple placeholder image
-            img = Image.new('RGB', (1024, 1024), color=(73, 109, 137))
-            d = ImageDraw.Draw(img)
-            d.text((100, 500), prompt[:30], fill=(255, 255, 255))
-            
-            temp_file = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
-            img.save(temp_file.name)
-            
-            return temp_file.name
-            
-        except Exception as e:
-            print(f"   ❌ AI image error: {e}")
-            return None
-    
     def get_stock_video(self, query):
         """Get stock video from Pexels"""
         try:
             print(f"🎬 Searching stock video: {query}")
+            
+            if not self.pexels_key:
+                print("   ⚠️  No Pexels key, using fallback")
+                return self.create_color_video()
             
             # Pexels API call
             headers = {"Authorization": self.pexels_key}
@@ -74,94 +41,99 @@ class VideoCreator:
                     return temp_file.name
             
             print("   ⚠️  Using fallback video")
-            # Fallback: create simple video
-            return self.create_fallback_video()
+            return self.create_color_video()
             
         except Exception as e:
             print(f"   ❌ Stock video error: {e}")
-            return self.create_fallback_video()
+            return self.create_color_video()
     
-    def create_fallback_video(self):
-        """Create a simple fallback video"""
-        print("   🎥 Creating fallback video...")
+    def create_color_video(self):
+        """Create a simple colored video with FFmpeg"""
+        print("   🎥 Creating color video...")
         
-        # Create a simple colored clip
-        clip = ColorClip((1280, 720), color=(random.randint(0,255), random.randint(0,255), random.randint(0,255)))
-        clip = clip.set_duration(5)
+        colors = ["red", "blue", "green", "purple", "orange"]
+        color = random.choice(colors)
         
         temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
-        clip.write_videofile(temp_file.name, fps=24, verbose=False, logger=None)
+        
+        # Create video with FFmpeg (no ImageMagick needed)
+        cmd = f'ffmpeg -f lavfi -i color=c={color}:s=1280x720:d=30 -c:v libx264 {temp_file.name} -y'
+        subprocess.run(cmd, shell=True, capture_output=True)
         
         return temp_file.name
     
     def create_video(self, topic, title):
-        """Create complete video"""
+        """Create complete video using ONLY FFmpeg (no ImageMagick)"""
         print(f"\n🎬 Creating video: {title}")
         print("=" * 50)
         
         # 1. Get background video
         background = self.get_stock_video(topic)
         
-        # 2. Generate AI image for content
-        image_prompt = f"Digital art about {topic}, futuristic, vibrant colors"
-        ai_image = self.generate_ai_image(image_prompt)
+        # 2. Create final video with text using FFmpeg
+        output_file = f"video_{random.randint(1000,9999)}.mp4"
         
-        # 3. Combine into final video
-        if background and ai_image:
-            print("   🎞️  Editing video...")
-            
-            # Load clips
-            bg_clip = VideoFileClip(background).subclip(0, 10)  # 10 seconds
-            img_clip = ImageClip(ai_image).set_duration(5).resize(height=400)
-            
-            # Position image on video
-            img_clip = img_clip.set_position(('center', 'center'))
-            
-            # Create text
-            txt_clip = TextClip(title, fontsize=40, color='white', font='Arial')
-            txt_clip = txt_clip.set_position(('center', 50)).set_duration(10)
-            
-            # Composite video
-            final = CompositeVideoClip([bg_clip, img_clip.set_start(2), txt_clip])
-            
-            # Save final video
-            output_file = f"video_{random.randint(1000,9999)}.mp4"
-            final.write_videofile(output_file, fps=24)
-            
+        # Simple FFmpeg command to add text
+        # This uses FFmpeg's built-in drawtext filter (no ImageMagick needed)
+        cmd = f"""
+        ffmpeg -y -i {background} \
+        -vf "drawtext=text='{title}':fontcolor=white:fontsize=48:box=1:boxcolor=black@0.5:boxborderw=5:x=(w-text_w)/2:y=(h-text_h)/2" \
+        -c:v libx264 -preset fast -crf 25 \
+        -c:a aac -b:a 128k \
+        -t 30 \
+        {output_file}
+        """
+        
+        print("   🎞️  Adding text to video...")
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        
+        if result.returncode == 0:
             print(f"   ✅ Video created: {output_file}")
             
-            # Cleanup temp files
-            os.unlink(background)
-            if ai_image and os.path.exists(ai_image):
-                os.unlink(ai_image)
+            # Cleanup temp file
+            if os.path.exists(background):
+                os.unlink(background)
             
             return output_file
-        
-        return None
+        else:
+            print(f"   ❌ FFmpeg failed: {result.stderr[:200]}")
+            return None
     
     def create_thumbnail(self, title, topic):
-        """Create thumbnail image"""
-        print(f"🖼️  Creating thumbnail for: {title}")
+        """Create thumbnail using PIL (no ImageMagick)"""
+        print(f"🖼️  Creating thumbnail: {title}")
         
-        # Create simple thumbnail
-        img = Image.new('RGB', (1280, 720), color=(41, 128, 185))
+        # Create simple thumbnail with PIL
+        img = Image.new('RGB', (1280, 720), color=(30, 30, 46))
         draw = ImageDraw.Draw(img)
         
-        # Add title text
+        # Simple text
         try:
-            font = ImageFont.truetype("arial.ttf", 60)
+            # Try to use default font
+            from PIL import ImageFont
+            try:
+                font = ImageFont.truetype("DejaVuSans.ttf", 60)
+            except:
+                font = ImageFont.load_default()
         except:
-            font = ImageFont.load_default()
+            font = None
         
-        # Wrap text
-        lines = textwrap.wrap(title, width=30)
-        y = 200
+        # Draw title (simple, split into two lines if too long)
+        if len(title) > 40:
+            lines = [title[:40], title[40:80]] if len(title) > 80 else [title]
+        else:
+            lines = [title]
+        
+        y = 250
         for line in lines:
-            draw.text((100, y), line, font=font, fill=(255, 255, 255))
-            y += 70
-        
-        # Add topic
-        draw.text((100, 500), f"# {topic}", font=font, fill=(255, 215, 0))
+            if font:
+                bbox = draw.textbbox((0, 0), line, font=font)
+                text_width = bbox[2] - bbox[0]
+                x = (1280 - text_width) / 2
+                draw.text((x, y), line, font=font, fill=(255, 255, 255))
+            else:
+                draw.text((100, y), line, fill=(255, 255, 255))
+            y += 80
         
         # Save thumbnail
         thumb_file = f"thumbnail_{random.randint(1000,9999)}.png"
@@ -170,34 +142,23 @@ class VideoCreator:
         print(f"   ✅ Thumbnail created: {thumb_file}")
         return thumb_file
 
+# Simple test function
 def main():
     print("=" * 50)
-    print("VIDEO CREATION PIPELINE")
+    print("SIMPLE VIDEO CREATOR TEST")
     print("=" * 50)
     
     creator = VideoCreator()
     
-    # Test with sample topic
-    topics = ["AI Technology", "Future Tech", "Digital Revolution", "Smart AI"]
-    topic = random.choice(topics)
-    title = f"The Future of {topic} in 2024"
+    # Test
+    title = "Make $500/Month with AI"
+    video_file = creator.create_video("AI Technology", title)
     
-    print(f"\n📹 Topic: {topic}")
-    print(f"🏷️  Title: {title}")
-    
-    # Create video
-    video_file = creator.create_video(topic, title)
-    
-    # Create thumbnail
     if video_file:
-        thumbnail = creator.create_thumbnail(title, topic)
-        print(f"\n🎉 Pipeline complete!")
-        print(f"   Video: {video_file}")
-        print(f"   Thumbnail: {thumbnail}")
+        thumbnail = creator.create_thumbnail(title, "AI Technology")
+        print(f"\n✅ SUCCESS! Video: {video_file}, Thumbnail: {thumbnail}")
     else:
-        print("\n❌ Video creation failed")
-    
-    print("\n" + "=" * 50)
+        print("\n❌ Failed to create video")
 
 if __name__ == "__main__":
     main()
