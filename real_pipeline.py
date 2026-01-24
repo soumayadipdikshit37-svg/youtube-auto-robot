@@ -1,174 +1,168 @@
-#!/usr/bin/env python3
-"""
-🎬 REAL YouTube Automation Pipeline - WORKING VERSION
-No ANTIALIAS errors - Creates REAL videos
-"""
-
 import os
-import random
+import json
+import sys
 from datetime import datetime
-
-print("=" * 60)
-print("🤖 REAL YOUTUBE AUTOMATION PIPELINE")
-print("=" * 60)
-print(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
-# Check Pexels API key
-print("\n🔍 Environment Check:")
-if os.getenv("PEXELS_API_KEY"):
-    print("   ✅ PEXELS_API_KEY - Ready for video downloads")
-else:
-    print("   ❌ PEXELS_API_KEY - Missing")
-    print("   ⚠️  Add PEXELS_API_KEY to GitHub Secrets!")
-    exit(1)
-
-# Import working modules
-try:
-    from video_creator import VideoCreator
-    from youtube_uploader import YouTubeUploader
-    print("   ✅ Video Creator imported")
-    print("   ✅ YouTube Uploader imported")
-except Exception as e:
-    print(f"   ❌ Import error: {e}")
-    exit(1)
-
-# AI Profit Topics
-TOPICS = [
-    "AI Technology",
-    "ChatGPT Automation", 
-    "YouTube Automation",
-    "Passive Income with AI",
-    "No-Code AI Tools",
-    "Automated Businesses"
-]
-
-def create_simple_video():
-    """Create one simple video that definitely works"""
-    print("\n" + "=" * 60)
-    print("🚀 CREATING REAL YOUTUBE VIDEO")
-    print("=" * 60)
-    
-    # Initialize
-    video_creator = VideoCreator()
-    youtube_uploader = YouTubeUploader()
-    
-    # Choose topic
-    topic = random.choice(TOPICS)
-    earnings = random.randint(100, 1000)
-    title = f"Make ${earnings}/Month with {topic}"
-    
-    print(f"\n📹 Video Details:")
-    print(f"   Topic: {topic}")
-    print(f"   Title: {title}")
-    print(f"   Earnings: ${earnings}/month")
-    
-    # Step 1: Create video
-    print(f"\n🎬 Step 1: Creating video...")
-    try:
-        video_file = video_creator.create_video(topic, title)
-        if video_file and os.path.exists(video_file):
-            print(f"   ✅ Video created: {video_file}")
-            print(f"   Size: {os.path.getsize(video_file)} bytes")
-        else:
-            print(f"   ❌ Video creation failed")
-            return None
-    except Exception as e:
-        print(f"   ❌ Video creation error: {e}")
-        return None
-    
-    # Step 2: Create thumbnail
-    print(f"\n🖼️  Step 2: Creating thumbnail...")
-    try:
-        thumbnail_file = video_creator.create_thumbnail(title, topic)
-        if thumbnail_file and os.path.exists(thumbnail_file):
-            print(f"   ✅ Thumbnail created: {thumbnail_file}")
-        else:
-            print(f"   ⚠️  Thumbnail creation skipped")
-            thumbnail_file = None
-    except Exception as e:
-        print(f"   ⚠️  Thumbnail error: {e}")
-        thumbnail_file = None
-    
-    # Step 3: Upload to YouTube
-    print(f"\n📤 Step 3: Uploading to YouTube...")
-    try:
-        description = f"""Learn how to make ${earnings}/month with {topic}. 
-This automated system creates passive income 24/7.
-
-#aitools #automation #passiveincome #makemoneyonline #{topic.lower().replace(' ', '')}"""
-        
-        tags = [topic.lower().replace(" ", ""), "passiveincome", "makemoney", "automation"]
-        
-        video_id = youtube_uploader.upload_video(
-            video_file=video_file,
-            title=title,
-            description=description,
-            tags=tags,
-            thumbnail_file=thumbnail_file
-        )
-        
-        print(f"   ✅ Upload completed!")
-        print(f"   Video ID: {video_id}")
-        
-        if "simulated" not in str(video_id):
-            print(f"   🔗 YouTube URL: https://youtube.com/watch?v={video_id}")
-        else:
-            print(f"   ℹ️  Simulation mode - Video saved locally")
-        
-    except Exception as e:
-        print(f"   ⚠️  Upload error (normal for simulation): {e}")
-        video_id = f"simulated_{random.randint(10000, 99999)}"
-    
-    # Save results
-    result = {
-        "video_file": video_file,
-        "thumbnail": thumbnail_file,
-        "title": title,
-        "video_id": video_id,
-        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }
-    
-    with open("video_result.json", "w") as f:
-        import json
-        json.dump(result, f, indent=2)
-    
-    print(f"\n💾 Results saved to: video_result.json")
-    
-    return result
+from video_creator import VideoCreator
+from youtube_uploader import YouTubeUploader
 
 def main():
-    """Main function - creates ONE video (for stability)"""
-    print("\n⚡ Starting automation...")
+    print("=" * 60)
+    print("🤖 REAL YOUTUBE AUTOMATION PIPELINE")
+    print("=" * 60)
+    print(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    result = create_simple_video()
+    # Environment check
+    print("🔍 Environment Check:")
+    if not os.environ.get('PEXELS_API_KEY'):
+        print("   ❌ PEXELS_API_KEY not found")
+        return
+    print("   ✅ PEXELS_API_KEY - Ready for video downloads")
     
+    # Import check
+    try:
+        from video_creator import VideoCreator
+        print("   ✅ Video Creator imported")
+    except:
+        print("   ❌ Video Creator import failed")
+        return
+        
+    try:
+        from youtube_uploader import YouTubeUploader
+        print("   ✅ YouTube Uploader imported")
+    except:
+        print("   ❌ YouTube Uploader import failed")
+        return
+    
+    print("⚡ Starting automation...")
+    print("=" * 60)
+    
+    # Step 1: Create video
+    print("\n🚀 CREATING REAL YOUTUBE VIDEO")
+    print("=" * 60)
+    
+    # Video details (you can customize these)
+    topics = [
+        "YouTube Automation", "Passive Income", "Online Business",
+        "Make Money Online", "AI Tools", "Side Hustle",
+        "Digital Marketing", "Content Creation", "Freelancing"
+    ]
+    
+    import random
+    topic = random.choice(topics)
+    earnings = random.randint(300, 1000)
+    
+    video_title = f"Make ${earnings}/Month with {topic}"
+    video_description = f"Learn how to make ${earnings}/month with {topic}. This is an automated video created using Python and AI tools."
+    video_tags = [topic.lower(), "automation", "make money", "passive income", "youtube"]
+    
+    print(f"📹 Video Details:")
+    print(f"   Topic: {topic}")
+    print(f"   Title: {video_title}")
+    print(f"   Earnings: ${earnings}/month")
+    
+    # Create video
+    print("\n🎬 Step 1: Creating video...")
+    creator = VideoCreator()
+    video_file = creator.create_video(
+        search_query=topic,
+        title=video_title,
+        earnings=earnings
+    )
+    
+    if not video_file or not os.path.exists(video_file):
+        print("   ❌ Video creation failed")
+        return
+    
+    print(f"   ✅ Video created: {video_file}")
+    print(f"   Size: {os.path.getsize(video_file)} bytes")
+    
+    # Create thumbnail
+    print("\n🖼️  Step 2: Creating thumbnail...")
+    thumbnail_file = creator.create_thumbnail(
+        title=video_title,
+        earnings=earnings
+    )
+    
+    if thumbnail_file and os.path.exists(thumbnail_file):
+        print(f"   ✅ Thumbnail created: {thumbnail_file}")
+    else:
+        print("   ⚠️  Thumbnail creation failed or skipped")
+        thumbnail_file = None
+    
+    # Upload to YouTube
+    print("\n📤 Step 3: Uploading to YouTube...")
+    uploader = YouTubeUploader()
+    
+    if uploader.authenticate():
+        print("   ✅ Authenticated with YouTube")
+        
+        try:
+            # FIXED: Correct parameters for upload_video
+            video_id = uploader.upload_video(
+                video_file=video_file,           # Required
+                title=video_title,               # Required
+                description=video_description,   # Optional
+                category_id="22",                # Optional (22 = People & Blogs)
+                tags=video_tags                  # Optional
+                # thumbnail_file removed - not supported in basic upload
+            )
+            
+            if video_id:
+                print(f"   🎉 UPLOAD SUCCESS!")
+                print(f"   Video ID: {video_id}")
+                print(f"   🔗 YouTube URL: https://youtube.com/watch?v={video_id}")
+            else:
+                print("   ❌ Upload failed - no video ID returned")
+                
+        except Exception as e:
+            print(f"   ⚠️  Upload error: {e}")
+            video_id = None
+    else:
+        print("   ❌ YouTube authentication failed")
+        video_id = None
+    
+    # Save results
+    print("\n💾 Results saved to: video_result.json")
+    results = {
+        "title": video_title,
+        "video_file": video_file,
+        "thumbnail_file": thumbnail_file,
+        "video_id": video_id,
+        "youtube_url": f"https://youtube.com/watch?v={video_id}" if video_id else None,
+        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "topic": topic,
+        "earnings": earnings
+    }
+    
+    with open('video_result.json', 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    # Summary
     print("\n" + "=" * 60)
     print("📊 EXECUTION SUMMARY")
     print("=" * 60)
     
-    if result:
-        print(f"🎉 SUCCESS! Video created successfully!")
-        print(f"   Title: {result['title']}")
-        print(f"   Video File: {result['video_file']}")
-        print(f"   Created at: {result['created_at']}")
+    if video_file and os.path.exists(video_file):
+        print("🎉 SUCCESS! Video created successfully!")
+        print(f"   Title: {video_title}")
+        print(f"   Video File: {video_file}")
+        print(f"   Created at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
-        # List all created files
-        print(f"\n📁 All created files:")
-        import glob
-        for file in glob.glob("*.mp4") + glob.glob("*.png") + glob.glob("*.json") + glob.glob("*.txt"):
-            print(f"   • {file}")
+        if video_id:
+            print(f"   ✅ Uploaded to YouTube: {video_id}")
+        else:
+            print("   ⚠️  Not uploaded to YouTube (check logs)")
     else:
-        print(f"⚠️  Video creation failed")
+        print("❌ FAILED! Video creation failed")
+    
+    print("\n📁 All created files:")
+    for file in [video_file, thumbnail_file, 'video_result.json', 'requirements.txt']:
+        if file and os.path.exists(file):
+            print(f"   • {file}")
     
     print(f"\n⏰ End Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🔧 Status: {'SUCCESS' if result else 'FAILED'}")
+    print(f"🔧 Status: {'SUCCESS' if video_file else 'FAILED'}")
     print("=" * 60)
-    
-    return result
 
 if __name__ == "__main__":
-    # Run the pipeline
-    result = main()
-    
-    # Exit with appropriate code
-    exit(0 if result else 1)
+    main()
