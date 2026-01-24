@@ -1,79 +1,89 @@
 #!/usr/bin/env python3
 import os
 import sys
-
-print("=" * 50)
-print("🎬 YOUTUBE VIDEO CREATOR")
-print("=" * 50)
+import traceback
 
 def main():
+    print("=" * 60)
+    print("🚀 YOUTUBE VIDEO AUTOMATION PIPELINE")
+    print("=" * 60)
+    
     try:
-        # Import ONLY when needed
-        print("\n1. Importing modules...")
-        sys.path.append('.')
+        # Step 1: Create Video
+        print("\n" + "▸" * 30)
+        print("STEP 1: CREATING VIDEO")
+        print("▸" * 30)
         
-        # Try to import video creator
+        # Import and run video creator
         try:
             from video_creator import create_video
-            print("✅ video_creator imported")
+            video_file = create_video()
+            
+            if not video_file:
+                video_file = "output_video.mp4"
+                
+            if not os.path.exists(video_file):
+                print(f"❌ Video file not found: {video_file}")
+                # Try to find any video
+                for f in os.listdir('.'):
+                    if f.endswith('.mp4') and os.path.getsize(f) > 1000:
+                        print(f"Found alternative: {f}")
+                        video_file = f
+                        break
+                
+                if not os.path.exists(video_file):
+                    print("❌ No video file created")
+                    return False
         except Exception as e:
-            print(f"❌ Cannot import video_creator: {e}")
+            print(f"❌ Video creation error: {e}")
+            traceback.print_exc()
             return False
         
-        # Create video
-        print("\n2. Creating video...")
-        video_file = create_video()
+        print(f"✅ Video created successfully: {video_file}")
+        size_mb = os.path.getsize(video_file) / (1024 * 1024)
+        print(f"📏 File size: {size_mb:.2f} MB")
         
-        if not video_file or not os.path.exists(video_file):
-            print(f"❌ Video file not found: {video_file}")
-            # Look for any MP4
-            for f in os.listdir('.'):
-                if f.endswith('.mp4'):
-                    print(f"Found MP4: {f}")
-                    video_file = f
-                    break
-            
-            if not os.path.exists(video_file):
-                print("❌ No video file created")
-                return False
+        # Step 2: Upload to YouTube
+        print("\n" + "▸" * 30)
+        print("STEP 2: UPLOADING TO YOUTUBE")
+        print("▸" * 30)
         
-        print(f"✅ Video created: {video_file}")
-        print(f"📏 Size: {os.path.getsize(video_file) / (1024*1024):.1f} MB")
-        
-        # Try YouTube upload if credentials exist
-        print("\n3. Checking YouTube credentials...")
-        has_creds = all([
-            os.getenv('YOUTUBE_CLIENT_ID'),
-            os.getenv('YOUTUBE_CLIENT_SECRET'),
-            os.getenv('YOUTUBE_REFRESH_TOKEN')
-        ])
+        # Check credentials
+        required_env = ['YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', 'YOUTUBE_REFRESH_TOKEN']
+        has_creds = all([os.getenv(var) for var in required_env])
         
         if has_creds:
-            print("✅ Credentials found, attempting upload...")
+            print("✅ YouTube credentials available")
             try:
                 from youtube_uploader import upload_video
-                if upload_video(video_file):
-                    print("✅ Uploaded to YouTube!")
+                success = upload_video(video_file)
+                if success:
+                    print("✅ Video uploaded to YouTube!")
                 else:
-                    print("⚠️ YouTube upload failed")
+                    print("⚠️ YouTube upload failed (check logs)")
             except Exception as e:
                 print(f"⚠️ Upload error: {e}")
+                # Continue anyway
         else:
-            print("ℹ️ No YouTube credentials. Video saved locally.")
+            print("ℹ️ No YouTube credentials found")
+            print("Add these GitHub Secrets to enable upload:")
+            print("1. YOUTUBE_CLIENT_ID")
+            print("2. YOUTUBE_CLIENT_SECRET")
+            print("3. YOUTUBE_REFRESH_TOKEN")
         
-        # Rename to final_video.mp4
+        # Step 3: Rename to final file
         if video_file != "final_video.mp4":
             os.rename(video_file, "final_video.mp4")
-            print("📁 Renamed to: final_video.mp4")
+            print(f"📁 Renamed to: final_video.mp4")
         
-        print("\n" + "=" * 50)
-        print("✅ PROCESS COMPLETED SUCCESSFULLY")
-        print("=" * 50)
+        print("\n" + "=" * 60)
+        print("✅ PIPELINE COMPLETED SUCCESSFULLY")
+        print("=" * 60)
+        
         return True
         
     except Exception as e:
-        print(f"\n❌ ERROR: {e}")
-        import traceback
+        print(f"\n❌ PIPELINE FAILED: {e}")
         traceback.print_exc()
         return False
 
