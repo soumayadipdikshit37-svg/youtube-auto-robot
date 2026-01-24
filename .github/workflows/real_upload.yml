@@ -41,11 +41,14 @@ jobs:
       env:
         # API Keys
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-        GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-        GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
+        GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}  # ⬅️ CRITICAL ADDITION!
       run: |
         echo "🚀 STARTING REAL YOUTUBE AUTOMATION"
+        echo "===================================="
+        echo "Testing environment variables..."
+        echo "PEXELS_API_KEY exists: $(if [ -n \"$PEXELS_API_KEY\" ]; then echo '✅ Yes'; else echo '❌ No'; fi)"
+        echo "GOOGLE_SERVICE_ACCOUNT_JSON exists: $(if [ -n \"$GOOGLE_SERVICE_ACCOUNT_JSON\" ]; then echo '✅ Yes'; else echo '❌ No'; fi)"
+        echo "First 50 chars of service account JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:0:50}..."
         echo "===================================="
         python real_pipeline.py
         echo "✅ Real automation completed successfully!"
