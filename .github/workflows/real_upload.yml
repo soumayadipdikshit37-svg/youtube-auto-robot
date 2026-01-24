@@ -1,4 +1,4 @@
-name: YouTube Auto Robot
+name: YouTube Monetization Automation
 
 on:
   workflow_dispatch:
@@ -9,127 +9,86 @@ on:
         default: 'Passive Income'
       title:
         description: 'Video Title'
-        required: false
-        default: 'Make $313/month with Passive Income'
+        required: false  
+        default: 'How I Make $500/Day with YouTube Automation'
 
 jobs:
-  create-upload:
+  monetize-youtube:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 30
+    
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
-
-    - name: 🔍 Debug Environment
-      run: |
-        echo "=== SYSTEM INFO ==="
-        echo "Python: $(python --version 2>&1)"
-        echo "Pip: $(pip --version)"
-        which ffmpeg && ffmpeg -version | head -1 || echo "FFmpeg not found"
-        echo "Current directory: $(pwd)"
-        echo "Files:"
-        ls -la
-
+    
     - name: 🐍 Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-
-    - name: 🛠️ Install FFmpeg
+    
+    - name: 📦 Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg
-        ffmpeg -version
-
-    - name: 📦 Install Python Packages
+        sudo apt-get install -y ffmpeg wget gnupg libgbm-dev
+        
+    - name: 🔧 Install Python Packages
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        echo "=== INSTALLED PACKAGES ==="
-        pip list | grep -E "moviepy|google|Pillow|numpy|opencv"
-
-    - name: 🎬 Create Silent Audio
-      run: |
-        echo "Creating silent audio..."
-        ffmpeg -f lavfi -i anullsrc=r=44100:cl=stereo -t 120 silent.mp4 -y 2>/dev/null || echo "Could not create audio, continuing..."
-        ls -la *.mp4 2>/dev/null || echo "No MP4 files"
-
-    - name: 🚀 Run Video Creation
-      id: create_video
+        playwright install chromium
+        playwright install-deps
+    
+    - name: 🎬 Create Monetized Video
       env:
-        VIDEO_TOPIC: ${{ github.event.inputs.topic || 'Passive Income' }}
-        VIDEO_TITLE: ${{ github.event.inputs.title || 'Make $313/month with Passive Income' }}
+        VIDEO_TITLE: ${{ github.event.inputs.title || 'How I Make $500/Day with YouTube Automation' }}
       run: |
-        echo "=== STARTING VIDEO CREATION ==="
-        echo "Topic: $VIDEO_TOPIC"
-        echo "Title: $VIDEO_TITLE"
-        
-        # Run video creator directly
+        echo "💰 Creating MONETIZED video: $VIDEO_TITLE"
         python video_creator.py
         
-        if [ $? -eq 0 ]; then
-          echo "✅ Video creation successful"
-          echo "video_file=output_video.mp4" >> $GITHUB_OUTPUT
+        if [ -f "monetized_video.mp4" ]; then
+          echo "✅ Video created: monetized_video.mp4"
+          echo "📏 Size: $(du -h monetized_video.mp4)"
         else
           echo "❌ Video creation failed"
           exit 1
         fi
-
-    - name: 📁 Check Created Video
-      run: |
-        echo "=== CHECKING VIDEO FILES ==="
-        
-        # Look for any video file
-        if [ -f "output_video.mp4" ]; then
-          echo "✅ Found: output_video.mp4"
-          mv output_video.mp4 final_video.mp4
-        elif [ -f "video.mp4" ]; then
-          echo "✅ Found: video.mp4"
-          mv video.mp4 final_video.mp4
-        elif [ -f "final_video.mp4" ]; then
-          echo "✅ Found: final_video.mp4"
-        else
-          echo "❌ No video file found! Searching..."
-          find . -name "*.mp4" -type f
-          echo "Creating dummy video for testing..."
-          ffmpeg -f lavfi -i testsrc=duration=10:size=1280x720:rate=30 -c:v libx264 test_video.mp4 -y
-          mv test_video.mp4 final_video.mp4
-        fi
-        
-        echo "✅ Final video: final_video.mp4"
-        echo "Size: $(du -h final_video.mp4 2>/dev/null || echo 'Unknown')"
-
-    - name: 📤 Upload to YouTube
-      if: env.YOUTUBE_CLIENT_ID != ''
+    
+    - name: 📤 Auto-Upload to YouTube
       env:
-        YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-        YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        YOUTUBE_EMAIL: ${{ secrets.YOUTUBE_EMAIL }}
+        YOUTUBE_PASSWORD: ${{ secrets.YOUTUBE_PASSWORD }}
       run: |
-        echo "=== UPLOADING TO YOUTUBE ==="
-        
-        if [ -f "final_video.mp4" ]; then
-          echo "Video found, attempting upload..."
-          python youtube_uploader.py || echo "Upload failed, but continuing..."
+        if [ -n "$YOUTUBE_EMAIL" ] && [ -n "$YOUTUBE_PASSWORD" ]; then
+          echo "🚀 Starting REAL YouTube upload..."
+          python youtube_uploader.py
         else
-          echo "❌ No video to upload"
+          echo "⚠️ YouTube credentials not set."
+          echo "Add these GitHub Secrets to enable upload:"
+          echo "1. YOUTUBE_EMAIL"
+          echo "2. YOUTUBE_PASSWORD"
+          echo "Video saved as artifact."
         fi
-
+    
     - name: 💾 Save Video Artifact
       uses: actions/upload-artifact@v4
       with:
         name: youtube-video
-        path: final_video.mp4
-        retention-days: 7
-
-    - name: 🎉 Success Notification
+        path: monetized_video.mp4
+        retention-days: 30
+    
+    - name: 📊 Monetization Report
       if: success()
       run: |
         echo "========================================"
-        echo "✅ YOUTUBE AUTOMATION COMPLETE"
+        echo "💰 YOUTUBE MONETIZATION SYSTEM READY"
         echo "========================================"
-        echo "Video created: final_video.mp4"
-        echo "Download from Artifacts section"
-        echo "Check YouTube Studio if upload was attempted"
+        echo "Video: monetized_video.mp4"
+        echo "Duration: 5 minutes (monetizable)"
+        echo ""
+        echo "ESTIMATED EARNINGS (per 1,000 views):"
+        echo "• YouTube Ads: $2-$10"
+        echo "• Monthly potential (10K views): $20-$100"
+        echo "• Monthly potential (100K views): $200-$1,000"
+        echo ""
+        echo "NEXT: Add YouTube credentials to upload"
         echo "========================================"
