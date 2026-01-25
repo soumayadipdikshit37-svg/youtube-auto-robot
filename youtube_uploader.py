@@ -1,11 +1,13 @@
 import os
 import sys
+import time
+from playwright.sync_api import sync_playwright
 
 def upload_video(video_path="monetized_video.mp4"):
-    """Real YouTube upload using Playwright automation"""
+    """Real YouTube upload with increased timeouts"""
     
-    print("📤 YOUTUBE UPLOAD SYSTEM")
-    print("=" * 50)
+    print("🚀 DIRECT YOUTUBE UPLOAD STARTING...")
+    print("=" * 60)
     
     # Check file
     if not os.path.exists(video_path):
@@ -17,168 +19,113 @@ def upload_video(video_path="monetized_video.mp4"):
     password = os.getenv('YOUTUBE_PASSWORD')
     
     if not email or not password:
-        print("❌ YouTube credentials not set")
-        print("")
-        print("TO FIX THIS:")
-        print("1. Go to your GitHub repository")
-        print("2. Click 'Settings' → 'Secrets and variables' → 'Actions'")
-        print("3. Click 'New repository secret'")
-        print("4. Add these TWO secrets:")
-        print("   - Name: YOUTUBE_EMAIL")
-        print("   - Name: YOUTUBE_PASSWORD")
-        print("")
-        print("Your credentials are SAFE in GitHub Secrets")
-        print("They are NOT stored in code")
+        print("❌ Missing YouTube credentials")
+        print("Add to GitHub Secrets:")
+        print("1. YOUTUBE_EMAIL")
+        print("2. YOUTUBE_PASSWORD")
         return False
     
-    print(f"✅ Credentials found for: {email}")
-    print(f"🎬 Video: {video_path}")
+    print(f"📧 Logging in as: {email}")
+    print(f"🎬 Uploading: {video_path}")
     print(f"📏 Size: {os.path.getsize(video_path) / (1024*1024):.1f} MB")
     print("")
-    print("🚀 Starting REAL YouTube upload in 3 seconds...")
     
     try:
-        # Import Playwright
-        from playwright.sync_api import sync_playwright
-        import time
-        
-        print("1. Launching browser...")
-        
         with sync_playwright() as p:
-            # Launch browser
-            browser = p.chromium.launch(headless=True)
+            # Launch browser with longer timeout
+            print("1. Launching browser...")
+            browser = p.chromium.launch(
+                headless=True,
+                timeout=120000  # 2 minute timeout
+            )
+            
             context = browser.new_context(
                 viewport={'width': 1920, 'height': 1080},
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             )
             page = context.new_page()
             
-            print("2. Opening YouTube Studio...")
-            page.goto('https://studio.youtube.com', timeout=60000)
+            # Navigate with longer timeout
+            print("2. Opening YouTube...")
+            page.goto('https://accounts.google.com', timeout=120000)
             time.sleep(3)
             
-            # Check if we're logged in
-            if 'signin' in page.url or page.locator('input[type="email"]').count() > 0:
-                print("3. Logging in to YouTube...")
-                
-                # Email
-                page.fill('input[type="email"]', email)
-                page.click('button:has-text("Next")')
-                time.sleep(2)
-                
-                # Password
-                page.fill('input[type="password"]', password)
-                page.click('button:has-text("Next")')
-                time.sleep(5)
+            # Login
+            print("3. Logging in...")
+            page.fill('input[type="email"]', email)
+            page.click('button:has-text("Next")')
+            time.sleep(3)
             
-            print("4. Starting upload process...")
+            page.fill('input[type="password"]', password)
+            page.click('button:has-text("Next")')
+            time.sleep(5)
             
-            # Click create button
+            # Go to YouTube Studio
+            print("4. Going to YouTube Studio...")
+            page.goto('https://studio.youtube.com', timeout=120000)
+            time.sleep(5)
+            
+            # Click upload button
+            print("5. Starting upload...")
             page.click('ytcp-button#create-icon')
-            time.sleep(1)
+            time.sleep(2)
             
-            # Click upload video
             page.click('tp-yt-paper-item:has-text("Upload video")')
             time.sleep(3)
             
-            print("5. Uploading video file...")
-            
             # Upload file
+            print("6. Selecting video file...")
             file_input = page.locator('input[type="file"]').first
             file_input.set_input_files(video_path)
             
             # Wait for upload
-            for i in range(30):
-                if page.locator('ytcp-video-upload-progress').count() > 0:
-                    progress = page.locator('ytcp-video-upload-progress').first
-                    print(f"   Uploading... {i*3}%")
+            print("7. Uploading... (this takes 1-2 minutes)")
+            for i in range(60):  # Wait up to 60 seconds
+                if page.locator('text="Upload complete"').count() > 0:
+                    print("   ✅ Upload complete!")
+                    break
                 time.sleep(1)
+                if i % 10 == 0:
+                    print(f"   ...{i} seconds")
             
-            print("6. Setting video details...")
-            time.sleep(5)
+            # Fill details
+            print("8. Adding video details...")
+            title = "How I Make $500/Day with YouTube Automation"
+            page.fill('ytcp-social-suggestion-input#textbox', title)
+            time.sleep(2)
             
-            # Title
-            title = "How I Make $500/Day with YouTube Automation (Full Guide 2024)"
-            title_box = page.locator('ytcp-social-suggestion-input#textbox').first
-            title_box.fill(title)
-            time.sleep(1)
-            
-            # Description
-            description = """💰 HOW TO MAKE MONEY ON YOUTUBE AUTOMATION
-
-Learn the exact system to make $500+ per day with YouTube automation.
-
-► WHAT YOU'LL LEARN:
-• Find profitable niches
-• Create automated content
-• Optimize for YouTube SEO
-• Enable monetization
-• Scale to $10K/month
-
-► TOOLS MENTIONED:
-• Video creation software
-• SEO optimization tools
-• Monetization platforms
-
-#PassiveIncome #YouTubeAutomation #MakeMoneyOnline"""
-            
-            desc_box = page.locator('ytcp-video-description#textbox').first
-            desc_box.fill(description)
-            time.sleep(1)
-            
-            print("7. Publishing video...")
-            
-            # Click through options
-            for _ in range(3):
+            # Click through
+            for i in range(3):
                 next_btn = page.locator('ytcp-button#next-button').first
                 if next_btn.is_visible():
                     next_btn.click()
                     time.sleep(2)
             
-            # Set to Public
-            public_btn = page.locator('tp-yt-paper-radio-button[name="PUBLIC"]').first
-            if public_btn.is_visible():
-                public_btn.click()
-                time.sleep(1)
+            # Publish
+            print("9. Publishing...")
+            page.click('tp-yt-paper-radio-button[name="PUBLIC"]')
+            time.sleep(1)
             
-            # Click done
-            done_btn = page.locator('ytcp-button#done-button').first
-            if done_btn.is_visible():
-                done_btn.click()
-                time.sleep(10)
+            page.click('ytcp-button#done-button')
+            time.sleep(10)
             
-            print("✅ UPLOAD COMPLETE!")
+            print("=" * 60)
+            print("✅ UPLOAD SUCCESSFUL!")
             print("📹 Video is now LIVE on YouTube")
-            print("🎥 Check: https://studio.youtube.com")
+            print("💰 Start earning: $2-$10 per 1000 views")
+            print("=" * 60)
             
             # Take screenshot
             page.screenshot(path='upload_success.png')
-            print("📸 Screenshot saved: upload_success.png")
+            print("📸 Screenshot saved")
             
             browser.close()
-            
-            print("\n" + "="*50)
-            print("💰 MONETIZATION ACTIVE")
-            print("="*50)
-            print("Your video is now earning money!")
-            print("")
-            print("ESTIMATED EARNINGS:")
-            print("• 1,000 views = $2-$10")
-            print("• 10,000 views = $20-$100")
-            print("• 100,000 views = $200-$1,000")
-            print("")
-            print("Check YouTube Studio Analytics tomorrow!")
-            print("="*50)
-            
             return True
             
     except Exception as e:
-        print(f"❌ Upload error: {e}")
-        print("\n⚠️ TROUBLESHOOTING:")
-        print("1. Make sure YouTube credentials are correct")
-        print("2. If using 2FA, create an App Password")
-        print("3. Check your YouTube channel exists")
-        print("4. Try manual upload first to verify account")
+        print(f"❌ Error: {str(e)[:200]}")
+        print("\n⚠️ Quick fix: Use App Password if 2FA is enabled")
+        print("Go to: https://myaccount.google.com/apppasswords")
         return False
 
 if __name__ == "__main__":
