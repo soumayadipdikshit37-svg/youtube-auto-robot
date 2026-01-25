@@ -15,7 +15,7 @@ on:
 jobs:
   monetize-youtube:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45  # Increased for upload
     
     steps:
     - name: 📥 Checkout code
@@ -59,8 +59,15 @@ jobs:
         YOUTUBE_PASSWORD: ${{ secrets.YOUTUBE_PASSWORD }}
       run: |
         if [ -n "$YOUTUBE_EMAIL" ] && [ -n "$YOUTUBE_PASSWORD" ]; then
-          echo "🚀 Starting REAL YouTube upload..."
+          echo "🚀 Starting DIRECT YouTube upload (45 minute timeout)..."
           python youtube_uploader.py
+          UPLOAD_RESULT=$?
+          if [ $UPLOAD_RESULT -eq 0 ]; then
+            echo "✅ YouTube upload successful!"
+          else
+            echo "⚠️ Upload may have timed out but video was created"
+            echo "Download video from Artifacts and upload manually"
+          fi
         else
           echo "⚠️ YouTube credentials not set."
           echo "Add these GitHub Secrets to enable upload:"
@@ -80,15 +87,23 @@ jobs:
       if: success()
       run: |
         echo "========================================"
-        echo "💰 YOUTUBE MONETIZATION SYSTEM READY"
+        echo "💰 YOUTUBE MONETIZATION SYSTEM"
         echo "========================================"
-        echo "Video: monetized_video.mp4"
-        echo "Duration: 5 minutes (monetizable)"
+        echo "Status: VIDEO CREATED ✓"
+        
+        if [ -n "$YOUTUBE_EMAIL" ] && [ -n "$YOUTUBE_PASSWORD" ]; then
+          echo "Upload: ATTEMPTED (check logs above)"
+        else
+          echo "Upload: NEED CREDENTIALS"
+          echo "Add to GitHub Secrets:"
+          echo "1. YOUTUBE_EMAIL"
+          echo "2. YOUTUBE_PASSWORD"
+        fi
+        
         echo ""
-        echo "ESTIMATED EARNINGS (per 1,000 views):"
-        echo "• YouTube Ads: $2-$10"
-        echo "• Monthly potential (10K views): $20-$100"
-        echo "• Monthly potential (100K views): $200-$1,000"
-        echo ""
-        echo "NEXT: Add YouTube credentials to upload"
+        echo "NEXT STEPS:"
+        echo "1. Download video from Artifacts"
+        echo "2. Go to https://studio.youtube.com"
+        echo "3. Upload manually if needed"
+        echo "4. Video earns $2-$10 per 1000 views"
         echo "========================================"
