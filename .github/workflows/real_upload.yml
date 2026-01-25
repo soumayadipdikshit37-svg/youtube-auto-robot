@@ -36,7 +36,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         playwright install chromium
-        playwright install-deps
+        # Skip playwright install-deps - we installed them manually
     
     - name: 🎬 Create Monetized Video
       env:
