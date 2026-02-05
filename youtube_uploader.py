@@ -3,7 +3,7 @@ import sys
 import time
 from playwright.sync_api import sync_playwright
 
-def upload_video(video_path="monetized_video.mp4"):
+def upload_video(video_path="monetized_video.mp4", title=None, description=None, tags=None):
     """Real YouTube upload with increased timeouts"""
     
     print("🚀 DIRECT YOUTUBE UPLOAD STARTING...")
@@ -90,9 +90,15 @@ def upload_video(video_path="monetized_video.mp4"):
             
             # Fill details
             print("8. Adding video details...")
-            title = "How I Make $500/Day with YouTube Automation"
+            title = title or "YouTube Automation Video"
             page.fill('ytcp-social-suggestion-input#textbox', title)
             time.sleep(2)
+
+            if description:
+                description_box = page.locator('div#textbox[aria-label=\"Description\"]').first
+                if description_box.count() > 0:
+                    description_box.fill(description)
+                    time.sleep(1)
             
             # Click through
             for i in range(3):
@@ -112,7 +118,7 @@ def upload_video(video_path="monetized_video.mp4"):
             print("=" * 60)
             print("✅ UPLOAD SUCCESSFUL!")
             print("📹 Video is now LIVE on YouTube")
-            print("💰 Start earning: $2-$10 per 1000 views")
+            print("📊 Check YouTube Studio for performance and eligibility status")
             print("=" * 60)
             
             # Take screenshot
